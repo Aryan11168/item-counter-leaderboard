@@ -2,315 +2,320 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <title>Item Counter & Leaderboard</title>
-  <link rel="stylesheet" href="style.css?v=2.0">
+  <link rel="stylesheet" href="style.css?v=3.5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Main Header -->
+  <!-- Fullscreen Celebration Confetti Canvas -->
+  <canvas id="confetti-canvas" class="confetti-overlay" aria-hidden="true"></canvas>
+
+  <div class="mobile-app-shell">
+    
+    <!-- Top App Bar -->
     <header class="app-header">
       <div class="header-top">
-        <div class="header-brand">
-          <div class="logo-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-              <line x1="12" y1="22.08" x2="12" y2="12"></line>
-            </svg>
-          </div>
-          <div>
-            <h1 class="header-title">Item Tracker</h1>
-            <p class="header-subtitle">Live counts & leaderboard</p>
-          </div>
+        <div class="app-title-group">
+          <div class="app-brand-badge">🏆 ARENA CHAMPIONSHIP</div>
+          <h1 class="header-title" id="page-dynamic-title">Leaderboard</h1>
         </div>
 
-        <!-- Role Access Control Area -->
-        <div class="role-control-area">
-          <div id="mode-badge" class="mode-badge viewer" role="status">
-            <span class="mode-dot"></span>
-            <span id="mode-text">Viewer Mode (Read-Only)</span>
+        <!-- Coin Badge, Sound Toggle & Admin Lock -->
+        <div class="header-right-group">
+          <button type="button" class="header-icon-btn" id="btn-sound-toggle" title="Toggle Sound FX" aria-label="Toggle Sound Effects">
+            <span id="sound-icon">🔊</span>
+          </button>
+
+          <div class="total-coins-pill" title="Total Items Taken across all players">
+            <span class="coin-icon">🪙</span>
+            <span class="coin-amount" id="header-total-items">0</span>
           </div>
 
-          <button type="button" class="btn btn-sm btn-outline" id="btn-admin-auth">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <span id="admin-btn-text">Admin Login</span>
+          <button type="button" class="admin-auth-toggle-btn" id="btn-admin-auth" title="Toggle Admin Mode" aria-label="Admin Access">
+            <span id="admin-icon-state">🔐</span>
           </button>
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <nav class="nav-tabs" aria-label="Main Navigation">
-        <button type="button" class="tab-btn active" id="tab-tracker" data-page="tracker" aria-selected="true" role="tab">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-          </svg>
-          <span>Page 1: Tracker</span>
-          <span class="badge" id="nav-people-count">0</span>
+      <!-- Mode Pill (Admin vs Viewer) -->
+      <div class="mode-bar">
+        <div id="mode-badge" class="mode-badge viewer" role="status">
+          <span class="mode-dot"></span>
+          <span id="mode-text">Viewer Mode (Read-Only)</span>
+        </div>
+        
+        <!-- Admin Quick Actions Toolbar -->
+        <div id="admin-quick-actions" class="admin-quick-actions" hidden>
+          <button type="button" class="btn-micro-action btn-publish" id="btn-publish-leaderboard" title="Apply changes to leaderboard now">
+            🚀 Update Leaderboard
+          </button>
+          <button type="button" class="btn-micro-action" id="btn-reset-all" title="Reset all scores to 0">
+            🔄 Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Native-Feel App Navigation Tabs -->
+      <nav class="app-nav-tabs" aria-label="Main Navigation">
+        <button type="button" class="nav-tab active" id="tab-leaderboard" data-page="leaderboard" aria-selected="true" role="tab">
+          <span class="nav-tab-icon">🏆</span>
+          <span class="nav-tab-label">Leaderboard</span>
+          <span class="pulse-indicator" id="leaderboard-indicator"></span>
         </button>
 
-        <button type="button" class="tab-btn" id="tab-leaderboard" data-page="leaderboard" aria-selected="false" role="tab">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-          </svg>
-          <span>Page 2: Leaderboard</span>
-          <span class="pulse-indicator" id="leaderboard-indicator"></span>
+        <button type="button" class="nav-tab" id="tab-tracker" data-page="tracker" aria-selected="false" role="tab">
+          <span class="nav-tab-icon">📋</span>
+          <span class="nav-tab-label">Item Tracker</span>
+          <span class="tab-count-badge" id="nav-people-count">0</span>
         </button>
       </nav>
     </header>
 
-    <!-- Main Content Area -->
-    <main class="content-wrapper">
+    <!-- Main Content Views -->
+    <main class="content-viewport">
       
+      <!-- ================= PAGE 2: GAMING LEADERBOARD ================= -->
+      <section id="page-leaderboard" class="page-view active" aria-labelledby="tab-leaderboard">
+        
+        <!-- Admin Leaderboard Notice (Shown only while Admin is editing) -->
+        <div id="admin-leaderboard-notice" class="leaderboard-frozen-banner" hidden>
+          <span>⏸️ Editing in progress: Leaderboard updates when you exit Admin Mode</span>
+        </div>
+
+        <!-- Podium Section (Matches Reference Image) -->
+        <div class="podium-showcase" id="podium-showcase">
+          <!-- Dynamically populated: 2nd place (left), 1st place (center), 3rd place (right) -->
+        </div>
+
+        <!-- Rest of the Participants (Rank 4, 5, 6...) -->
+        <div class="rankings-container" id="rankings-container">
+          <div class="rankings-header">
+            <span class="rankings-title">Leaderboard</span>
+            <span class="rankings-count" id="rest-count-badge">0 players</span>
+          </div>
+
+          <div id="rest-list" class="rankings-list" role="list">
+            <!-- Dynamically populated via app.js -->
+          </div>
+
+          <div id="rest-empty-state" class="empty-state py-compact" hidden>
+            <p class="empty-desc text-muted">No additional players outside the top 3 yet.</p>
+          </div>
+        </div>
+
+        <!-- Full Empty State if 0 players exist -->
+        <div id="leaderboard-empty" class="empty-arena-card" hidden>
+          <div class="empty-arena-icon">🏆</div>
+          <h2 class="empty-arena-title">Arena is Empty!</h2>
+          <p class="empty-arena-desc">No players added yet. Open the Tracker page to register players and count their items.</p>
+          <button type="button" class="btn btn-neon-primary mt-4" id="go-to-tracker-btn">
+            Open Item Tracker
+          </button>
+        </div>
+      </section>
+
       <!-- ================= PAGE 1: ITEM TRACKER ================= -->
-      <section id="page-tracker" class="page-view active" aria-labelledby="tab-tracker">
-        <!-- Quick Stats Banner -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon bg-blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-            </div>
+      <section id="page-tracker" class="page-view" aria-labelledby="tab-tracker">
+        
+        <!-- Quick Stats Cards -->
+        <div class="stats-row">
+          <div class="glass-stat-card">
+            <div class="stat-icon-wrap">👥</div>
             <div>
-              <div class="stat-value" id="stat-total-people">0</div>
-              <div class="stat-label">Total People</div>
+              <div class="stat-num" id="stat-total-people">0</div>
+              <div class="stat-sub">Players</div>
             </div>
           </div>
 
-          <div class="stat-card">
-            <div class="stat-icon bg-emerald">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-              </svg>
-            </div>
+          <div class="glass-stat-card">
+            <div class="stat-icon-wrap">🪙</div>
             <div>
-              <div class="stat-value" id="stat-total-items">0</div>
-              <div class="stat-label">Total Items Taken</div>
+              <div class="stat-num" id="stat-total-items">0</div>
+              <div class="stat-sub">Total Items</div>
             </div>
           </div>
 
-          <div class="stat-card">
-            <div class="stat-icon bg-amber">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="8" r="7"></circle>
-                <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
-              </svg>
-            </div>
+          <div class="glass-stat-card">
+            <div class="stat-icon-wrap">👑</div>
             <div>
-              <div class="stat-value text-truncate" id="stat-current-leader">-</div>
-              <div class="stat-label">Current Leader</div>
+              <div class="stat-num text-truncate" id="stat-current-leader">-</div>
+              <div class="stat-sub">#1 Leader</div>
             </div>
           </div>
         </div>
 
-        <!-- Viewer Info Banner (Displayed when not in admin mode) -->
-        <div id="viewer-info-banner" class="viewer-banner">
-          <div class="viewer-banner-icon">👀</div>
-          <div class="viewer-banner-content">
-            <h3 class="viewer-banner-title">Live Scoreboard — Read-Only Mode</h3>
-            <p class="viewer-banner-desc">
-              You are viewing the shared scoreboard. Only the designated administrator can add people or modify item counts. Data updates live.
-            </p>
+        <!-- Viewer Info Card (Only shown in Viewer Mode) -->
+        <div id="viewer-info-banner" class="viewer-glass-card">
+          <div class="viewer-glass-icon">👀</div>
+          <div class="viewer-glass-text">
+            <h4>Live Scoreboard</h4>
+            <p>Scores update live. Tap the 🔐 lock icon in the top right to log in as administrator and edit counts.</p>
           </div>
-          <button type="button" class="btn btn-sm btn-primary-soft" id="btn-banner-login">Admin Unlock</button>
         </div>
 
-        <!-- Add Person Form Card (Admin Only) -->
-        <div id="admin-add-card" class="card add-person-card" hidden>
-          <div class="card-header">
-            <div class="card-header-badge">Admin Controls</div>
-            <h2 class="card-title">Add New Person</h2>
-            <p class="card-description">Register someone new. Their item count will automatically start at 0.</p>
+        <!-- Admin Add Player Card (Admin Only) -->
+        <div id="admin-add-card" class="admin-action-card" hidden>
+          <div class="action-card-header">
+            <div class="action-card-title">
+              <span class="action-icon">➕</span>
+              <span>Register New Player</span>
+            </div>
+            <span class="action-badge">Custom start count</span>
           </div>
 
-          <form id="add-person-form" class="add-person-form" novalidate>
-            <div class="form-group">
-              <label for="person-name-input" class="form-label">Full Name</label>
-              <div class="input-wrapper">
-                <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <input 
-                  type="text" 
-                  id="person-name-input" 
-                  name="personName" 
-                  class="form-input" 
-                  placeholder="e.g. Sarah Connor, David Miller..." 
-                  maxlength="60"
-                  autocomplete="off"
-                  enterkeyhint="done"
-                  required
-                >
-              </div>
-              <div id="form-error-msg" class="form-error" role="alert" aria-live="polite"></div>
+          <form id="add-person-form" class="add-player-form" novalidate autocomplete="off">
+            <div class="input-glow-group">
+              <input 
+                type="text" 
+                id="person-name-input" 
+                name="personName" 
+                class="neon-input" 
+                placeholder="Player name..." 
+                maxlength="50"
+                enterkeyhint="next"
+                required
+              >
+              <input 
+                type="number" 
+                id="person-count-input" 
+                name="personCount" 
+                class="neon-input neon-input-count" 
+                placeholder="Items" 
+                min="0" 
+                max="999999"
+                value="0"
+                enterkeyhint="done"
+              >
+              <button type="submit" class="btn btn-add-player" id="btn-add-person">
+                <span>Add</span>
+              </button>
             </div>
-
-            <button type="submit" class="btn btn-primary" id="btn-add-person">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <span>Add Person</span>
-            </button>
+            <div id="form-error-msg" class="neon-form-error" role="alert" aria-live="polite"></div>
           </form>
         </div>
 
-        <!-- People List Card -->
-        <div class="card list-card">
-          <div class="card-header search-header">
+        <!-- Players List Card -->
+        <div class="players-card">
+          <div class="players-card-header">
             <div>
-              <h2 class="card-title">People & Item Counters</h2>
-              <p class="card-description" id="list-instructions-text">Viewing current items taken per person.</p>
+              <h2 class="players-card-title">All Players</h2>
+              <p class="players-card-sub" id="list-instructions-text">Viewing items taken per person</p>
             </div>
-            <!-- Search / Filter -->
-            <div class="search-box">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <input type="text" id="filter-input" placeholder="Search people..." aria-label="Search people by name">
+
+            <!-- Search input -->
+            <div class="neon-search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="filter-input" placeholder="Search..." aria-label="Search players by name">
               <button type="button" id="clear-search-btn" class="clear-search-btn" title="Clear search" aria-label="Clear search" hidden>✕</button>
             </div>
           </div>
 
-          <!-- The List Container -->
-          <div id="people-list" class="people-list" role="list">
+          <!-- Dynamic List Container -->
+          <div id="people-list" class="people-interactive-list" role="list">
             <!-- Dynamically populated via app.js -->
           </div>
 
-          <!-- Empty State -->
-          <div id="empty-state" class="empty-state" hidden>
-            <div class="empty-icon">👥</div>
-            <h3 class="empty-title">No people registered yet</h3>
-            <p class="empty-desc" id="empty-desc-text">Sign in as Admin to add participants and start counting items.</p>
+          <!-- Empty list state -->
+          <div id="empty-state" class="empty-players-notice" hidden>
+            <div class="empty-players-icon">🎮</div>
+            <h3 class="empty-players-title">No players registered yet</h3>
+            <p class="empty-players-desc" id="empty-desc-text">Log in as Admin to add participants and count items.</p>
           </div>
 
-          <!-- No Search Results State -->
-          <div id="no-search-results" class="empty-state" hidden>
-            <div class="empty-icon">🔍</div>
-            <h3 class="empty-title">No matching names</h3>
-            <p class="empty-desc">Try searching for a different keyword or clear your filter.</p>
+          <!-- No Search Results -->
+          <div id="no-search-results" class="empty-players-notice" hidden>
+            <div class="empty-players-icon">🔍</div>
+            <h3 class="empty-players-title">No matching player</h3>
+            <p class="empty-players-desc">Check your spelling or clear the filter.</p>
           </div>
-        </div>
-      </section>
-
-      <!-- ================= PAGE 2: LEADERBOARD ================= -->
-      <section id="page-leaderboard" class="page-view" aria-labelledby="tab-leaderboard">
-        <div class="leaderboard-hero">
-          <div class="leaderboard-badge">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-            </svg>
-            <span>Live Rankings</span>
-          </div>
-          <h2 class="leaderboard-title">Item Leaderboard</h2>
-          <p class="leaderboard-subtitle">Celebrating the highest item collectors. Top 3 are highlighted below!</p>
-        </div>
-
-        <!-- Top 3 Podium Area (Big Names) -->
-        <div class="top3-container">
-          <h3 class="top3-section-title">🏆 Top 3 Leaders</h3>
-          
-          <div class="podium-grid" id="podium-grid">
-            <!-- Dynamically populated: 2nd place (left), 1st place (center), 3rd place (right) -->
-          </div>
-        </div>
-
-        <!-- The Rest of the Ranks (Rank 4 and down in decreasing order) -->
-        <div class="card rest-card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Runner-Up Standings</h3>
-              <p class="card-description">All other participants in decreasing order of items taken.</p>
-            </div>
-            <div class="rest-count-badge" id="rest-count-badge">0 participants</div>
-          </div>
-
-          <div id="rest-list" class="rest-list" role="list">
-            <!-- Dynamically populated via app.js -->
-          </div>
-
-          <div id="rest-empty-state" class="empty-state py-small" hidden>
-            <p class="empty-desc text-muted">No additional participants outside the top 3 yet.</p>
-          </div>
-        </div>
-
-        <!-- Global Empty State if 0 people in system -->
-        <div id="leaderboard-empty" class="card empty-leaderboard-card" hidden>
-          <div class="empty-icon">🏆</div>
-          <h3 class="empty-title">The Leaderboard is Empty</h3>
-          <p class="empty-desc">Head back to Page 1 to add people and count their items!</p>
-          <button type="button" class="btn btn-primary mt-3" id="go-to-tracker-btn">
-            Go to Item Tracker
-          </button>
         </div>
       </section>
 
     </main>
 
-    <!-- Accessible Admin Login Dialog with Light Dismiss -->
-    <dialog id="admin-dialog" class="admin-dialog" closedby="any" aria-labelledby="admin-dialog-title">
-      <div class="dialog-content">
-        <div class="dialog-header">
-          <div class="dialog-icon">🔐</div>
+    <!-- Accessible Admin Login Dialog -->
+    <dialog id="admin-dialog" class="admin-modal" closedby="any" aria-labelledby="admin-dialog-title">
+      <div class="admin-modal-content">
+        <div class="admin-modal-header">
+          <div class="modal-glow-icon">🔐</div>
           <div>
-            <h2 id="admin-dialog-title" class="dialog-title">Admin Access</h2>
-            <p class="dialog-subtitle">Enter the admin passcode to unlock editing controls.</p>
+            <h2 id="admin-dialog-title" class="modal-title">Admin Access</h2>
+            <p class="modal-subtitle">Enter passcode to unlock player controls</p>
           </div>
-          <button type="button" class="dialog-close-btn" id="btn-close-dialog" aria-label="Close dialog">✕</button>
+          <button type="button" class="modal-close-btn" id="btn-close-dialog" aria-label="Close dialog">✕</button>
         </div>
 
-        <form id="admin-auth-form" class="dialog-form" novalidate>
-          <div class="form-group">
-            <label for="admin-password-input" class="form-label">Admin Passcode</label>
-            <div class="input-wrapper">
-              <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              </svg>
-              <input 
-                type="password" 
-                id="admin-password-input" 
-                class="form-input" 
-                placeholder="Enter admin password..." 
-                autocomplete="current-password" 
-                required
-              >
-            </div>
-            <div id="admin-auth-error" class="form-error" role="alert" aria-live="polite"></div>
+        <form id="admin-auth-form" class="modal-form" novalidate autocomplete="off">
+          <div class="modal-input-wrap">
+            <input 
+              type="password" 
+              id="admin-password-input" 
+              class="neon-input" 
+              placeholder="Enter admin passcode..." 
+              autocomplete="current-password" 
+              required
+            >
+            <div id="admin-auth-error" class="neon-form-error" role="alert" aria-live="polite"></div>
           </div>
 
-
-          <div class="dialog-actions">
-            <button type="button" class="btn btn-secondary" id="btn-cancel-dialog">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="btn-submit-admin">Unlock Access</button>
+          <div class="modal-btn-row">
+            <button type="button" class="btn btn-modal-cancel" id="btn-cancel-dialog">Cancel</button>
+            <button type="submit" class="btn btn-neon-primary" id="btn-submit-admin">Unlock</button>
           </div>
         </form>
       </div>
     </dialog>
 
-    <!-- Global Toast Notification -->
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <!-- Score Edit Dialog (For quick direct input) -->
+    <dialog id="edit-score-dialog" class="admin-modal" closedby="any" aria-labelledby="edit-score-title">
+      <div class="admin-modal-content">
+        <div class="admin-modal-header">
+          <div class="modal-glow-icon">✏️</div>
+          <div>
+            <h2 id="edit-score-title" class="modal-title">Update Count</h2>
+            <p class="modal-subtitle" id="edit-score-subtitle">Directly set item count</p>
+          </div>
+          <button type="button" class="modal-close-btn" id="btn-close-edit-dialog" aria-label="Close dialog">✕</button>
+        </div>
+
+        <form id="edit-score-form" class="modal-form" novalidate autocomplete="off">
+          <input type="hidden" id="edit-player-id">
+          <div class="modal-input-wrap">
+            <input 
+              type="number" 
+              id="edit-score-input" 
+              class="neon-input" 
+              min="0"
+              max="999999"
+              step="1"
+              required
+            >
+            <div id="edit-score-error" class="neon-form-error" role="alert" aria-live="polite"></div>
+          </div>
+
+          <div class="quick-add-pills">
+            <button type="button" class="pill-shortcut" data-add="1">+1</button>
+            <button type="button" class="pill-shortcut" data-add="5">+5</button>
+            <button type="button" class="pill-shortcut" data-add="10">+10</button>
+            <button type="button" class="pill-shortcut" data-set="0">Set 0</button>
+          </div>
+
+          <div class="modal-btn-row">
+            <button type="button" class="btn btn-modal-cancel" id="btn-cancel-edit-dialog">Cancel</button>
+            <button type="submit" class="btn btn-neon-primary" id="btn-save-edit-score">Save Count</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="neon-toast" role="status" aria-live="polite"></div>
   </div>
 
-  <script src="app.js?v=2.0"></script>
+  <script src="app.js?v=3.5"></script>
 </body>
 </html>

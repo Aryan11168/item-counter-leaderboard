@@ -9,7 +9,7 @@
 
 const DEFAULT_PEOPLE = [];
 
-const KV_KEY = 'scoreboard_people_v2';
+const KV_KEY = 'arena_scoreboard_master';
 let memoryFallback = [];
 
 // Helper to interact with Vercel KV / Upstash REST API
@@ -148,18 +148,29 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, person: newPerson, people });
     }
 
-    // Action: Update count (+1 or -1)
+    // Action: Update count (+1, -1, or direct setCount)
     if (action === 'UPDATE_COUNT') {
       const target = people.find(p => p.id === id);
       if (!target) {
         return res.status(404).json({ error: 'Person not found' });
       }
 
-      const change = Number(delta) || 0;
-      target.count = Math.max(0, target.count + change);
+      if (req.body.setCount !== undefined) {
+        target.count = Math.max(0, Number(req.body.setCount) || 0);
+      } else {
+        const change = Number(delta) || 0;
+        target.count = Math.max(0, target.count + change);
+      }
 
       await saveStoredPeople(people);
       return res.status(200).json({ success: true, person: target, people });
+    }
+
+    // Action: Bulk Save / Server Initialization from Admin client
+    if (action === 'BULK_SAVE' && Array.isArray(req.body.people)) {
+      people = req.body.people;
+      await saveStoredPeople(people);
+      return res.status(200).json({ success: true, people });
     }
 
     // Action: Delete person
