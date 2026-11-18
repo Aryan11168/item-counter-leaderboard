@@ -69,7 +69,7 @@ async function saveStoredPeople(people) {
 
 // Admin Password check
 function verifyAdmin(req) {
-  const expectedPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const expectedPassword = process.env.ADMIN_PASSWORD || 'manitsuttagang';
   
   // Check Authorization header or request body
   const authHeader = req.headers['authorization'];

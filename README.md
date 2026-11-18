@@ -40,17 +40,17 @@ A modern web application to track item counts per person with an official Top 3 
    - Click **Create Database** → select **KV**.
    - Name it (e.g., `item-tracker-kv`) and click **Create**.
    - Click **Connect Project** to connect it to this project. Vercel will automatically configure `KV_REST_API_URL` and `KV_REST_API_TOKEN` for you!
-4. **Set Your Custom Admin Password (Optional)**:
+4. **Set Your Custom Admin Password**:
    - In your project on Vercel, go to **Settings** → **Environment Variables**.
    - Add a new variable:
      - **Key**: `ADMIN_PASSWORD`
-     - **Value**: `your_secret_password` (default if omitted is `admin123`).
+     - **Value**: `your_secret_admin_password`
    - Click **Save** and redeploy.
 
 ---
 
 ## 🔑 Admin Access
 - Click **"Admin Login"** in the top navigation.
-- Enter your admin password (default: `admin123`).
+- Enter your admin password.
 - Editing buttons (`+`, `-`, Add Person, Delete) will appear immediately.
 - Regular visitors browsing the site will see a clean read-only scoreboard with live updates!

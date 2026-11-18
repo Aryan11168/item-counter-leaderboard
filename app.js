@@ -315,11 +315,13 @@ class ItemTrackerApp {
         return;
       }
     } catch (err) {
-      // Offline fallback: check default password
-      if (enteredPassword === 'admin123') {
+      // Offline fallback: verify one-way cryptographic hash without exposing plaintext
+      const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(enteredPassword));
+      const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+      if (hashHex === 'e26a1782b35c2aa15bdf33ebbdb3e52411c6c9a9f84be600d926f171f5453621') {
         isValid = true;
       } else {
-        this.adminAuthError.textContent = 'Incorrect password. Default is "admin123".';
+        this.adminAuthError.textContent = 'Incorrect admin password.';
         this.adminPasswordInput.classList.add('is-invalid');
         return;
       }
