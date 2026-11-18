@@ -1,0 +1,13 @@
+{
+  "name": "item-counter-leaderboard",
+  "version": "1.0.0",
+  "description": "Item counter and leaderboard with admin role management and Vercel KV storage",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "dependencies": {},
+  "keywords": ["leaderboard", "item-tracker", "counter", "vercel"],
+  "author": "",
+  "license": "MIT"
+}
