@@ -204,12 +204,44 @@ class ArenaTrackerApp {
     }
   }
 
+  // Sanitize and strictly deduplicate players by case-insensitive name
+  cleanPlayers(list) {
+    if (!Array.isArray(list)) return [];
+    const map = new Map();
+    for (const p of list) {
+      if (!p || !p.name) continue;
+      const name = String(p.name).trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      const count = Math.max(0, Number(p.count) || 0);
+
+      if (map.has(key)) {
+        const existing = map.get(key);
+        // Retain highest count
+        if (count > existing.count) {
+          existing.count = count;
+        }
+        if (p.id && (!existing.id || existing.id.startsWith('temp_'))) {
+          existing.id = p.id;
+        }
+      } else {
+        map.set(key, {
+          id: p.id || ('p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
+          name,
+          count,
+          createdAt: Number(p.createdAt) || Date.now()
+        });
+      }
+    }
+    return Array.from(map.values());
+  }
+
   loadPublishedPlayers() {
     try {
       const data = localStorage.getItem('arena_published_players_v1');
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return this.cleanPlayers(parsed);
       }
     } catch (e) {}
     return [];
@@ -217,6 +249,7 @@ class ArenaTrackerApp {
 
   savePublishedPlayers() {
     try {
+      this.publishedPlayers = this.cleanPlayers(this.publishedPlayers);
       localStorage.setItem('arena_published_players_v1', JSON.stringify(this.publishedPlayers));
     } catch (e) {}
   }
@@ -227,7 +260,7 @@ class ArenaTrackerApp {
       const primaryData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (primaryData) {
         const parsed = JSON.parse(primaryData);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return this.cleanPlayers(parsed);
       }
 
       // 2. Safe Migration: Check if user had added players in any previous prototype keys
@@ -243,9 +276,9 @@ class ArenaTrackerApp {
         if (legacy) {
           const parsed = JSON.parse(legacy);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Save immediately to permanent storage
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
-            return parsed;
+            const cleaned = this.cleanPlayers(parsed);
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cleaned));
+            return cleaned;
           }
         }
       }
@@ -257,6 +290,7 @@ class ArenaTrackerApp {
 
   saveLocalPlayers() {
     try {
+      this.players = this.cleanPlayers(this.players);
       const dataStr = JSON.stringify(this.players);
       localStorage.setItem(LOCAL_STORAGE_KEY, dataStr);
       localStorage.setItem('arena_tracker_players_v1', dataStr); // Dual backup
@@ -575,7 +609,7 @@ class ArenaTrackerApp {
     this.render();
 
     if (this.isOnlineHttp) {
-      this.syncMutation('UPDATE_COUNT', { id: pid, delta: 0, setCount: val });
+      this.syncMutation('UPDATE_COUNT', { id: pid, name: player.name, setCount: val });
     }
   }
 
@@ -647,7 +681,7 @@ class ArenaTrackerApp {
   }
 
   publishLeaderboard(fromLogout = false) {
-    this.publishedPlayers = JSON.parse(JSON.stringify(this.players));
+    this.publishedPlayers = this.cleanPlayers(JSON.parse(JSON.stringify(this.players)));
     this.savePublishedPlayers();
     this.sound.playCelebration();
     this.confetti.burst();
@@ -698,7 +732,10 @@ class ArenaTrackerApp {
       createdAt: Date.now()
     };
 
+    // Filter out any accidental matching entry by name before inserting
+    this.players = this.players.filter(p => p.name.toLowerCase() !== rawName.toLowerCase());
     this.players.unshift(newPlayer);
+    this.players = this.cleanPlayers(this.players);
     this.saveLocalPlayers();
 
     this.personNameInput.value = '';
@@ -709,7 +746,13 @@ class ArenaTrackerApp {
     this.render();
 
     if (this.isOnlineHttp) {
-      this.syncMutation('ADD_PERSON', { name: rawName, initialCount: newPlayer.count });
+      this.syncMutation('ADD_PERSON', {
+        id: newPlayer.id,
+        name: newPlayer.name,
+        count: newPlayer.count,
+        initialCount: newPlayer.count,
+        createdAt: newPlayer.createdAt
+      });
     }
   }
 
@@ -753,7 +796,14 @@ class ArenaTrackerApp {
       this.animateCounter(personId);
       this.checkNewLeaderCelebration();
       this.render();
-      if (this.isOnlineHttp) this.syncMutation('UPDATE_COUNT', { id: personId, delta: 1 });
+      if (this.isOnlineHttp) {
+        this.syncMutation('UPDATE_COUNT', {
+          id: personId,
+          name: player.name,
+          delta: 1,
+          setCount: player.count
+        });
+      }
       return;
     }
 
@@ -765,7 +815,14 @@ class ArenaTrackerApp {
         this.sound.playTap();
         this.animateCounter(personId);
         this.render();
-        if (this.isOnlineHttp) this.syncMutation('UPDATE_COUNT', { id: personId, delta: -1 });
+        if (this.isOnlineHttp) {
+          this.syncMutation('UPDATE_COUNT', {
+            id: personId,
+            name: player.name,
+            delta: -1,
+            setCount: player.count
+          });
+        }
       }
       return;
     }
@@ -773,12 +830,17 @@ class ArenaTrackerApp {
     // Delete button
     if (btn.classList.contains('btn-trash-player')) {
       if (confirm(`Remove "${player.name}" from the arena?`)) {
-        this.players = this.players.filter(p => p.id !== personId);
+        const deletedName = player.name;
+        this.players = this.players.filter(p => p.id !== personId && p.name.toLowerCase() !== deletedName.toLowerCase());
+        this.publishedPlayers = this.publishedPlayers.filter(p => p.id !== personId && p.name.toLowerCase() !== deletedName.toLowerCase());
         this.saveLocalPlayers();
+        this.savePublishedPlayers();
         this.sound.playTap();
-        this.showToast(`Removed "${player.name}".`);
+        this.showToast(`Removed "${deletedName}".`);
         this.render();
-        if (this.isOnlineHttp) this.syncMutation('DELETE_PERSON', { id: personId });
+        if (this.isOnlineHttp) {
+          this.syncMutation('DELETE_PERSON', { id: personId, name: deletedName });
+        }
       }
       return;
     }
@@ -810,7 +872,7 @@ class ArenaTrackerApp {
 
   async syncMutation(action, payload) {
     try {
-      await fetch('/api/people', {
+      const res = await fetch('/api/people', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -818,7 +880,47 @@ class ArenaTrackerApp {
         },
         body: JSON.stringify({ action, ...payload })
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.people)) {
+          this.mergeServerPeople(data.people);
+        }
+      }
     } catch (e) {}
+  }
+
+  mergeServerPeople(serverPeople) {
+    if (!Array.isArray(serverPeople)) return;
+    const cleanedServer = this.cleanPlayers(serverPeople);
+    const playerMap = new Map();
+
+    // Start with local players
+    this.players.forEach(p => {
+      const key = p.name.trim().toLowerCase();
+      playerMap.set(key, { ...p });
+    });
+
+    // Merge server players
+    cleanedServer.forEach(sp => {
+      const key = sp.name.trim().toLowerCase();
+      if (playerMap.has(key)) {
+        const local = playerMap.get(key);
+        // Ensure count is never reverted to 0
+        const finalCount = Math.max(local.count, sp.count);
+        playerMap.set(key, {
+          ...local,
+          id: sp.id || local.id,
+          name: local.name || sp.name,
+          count: finalCount
+        });
+      } else {
+        playerMap.set(key, sp);
+      }
+    });
+
+    this.players = this.cleanPlayers(Array.from(playerMap.values()));
+    this.saveLocalPlayers();
+    this.render();
   }
 
   async syncFromAPI() {
@@ -827,28 +929,9 @@ class ArenaTrackerApp {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.people)) {
-          // If server has players, merge with local players (never lose data)
           if (data.people.length > 0) {
-            const playerMap = new Map();
-            // Start with local
-            this.players.forEach(p => playerMap.set(p.id, p));
-            // Update/merge with server state
-            data.people.forEach(sp => {
-              if (playerMap.has(sp.id)) {
-                // If local count was updated, keep highest or server count
-                const local = playerMap.get(sp.id);
-                playerMap.set(sp.id, { ...local, count: sp.count, name: sp.name });
-              } else {
-                playerMap.set(sp.id, sp);
-              }
-            });
-            this.players = Array.from(playerMap.values());
-            this.saveLocalPlayers();
-            this.render();
-          } 
-          // If server is empty (e.g. fresh deploy/cold start), but client HAS players:
-          // NEVER wipe out local players! Instead, seed the server!
-          else if (this.players.length > 0 && this.isAdmin) {
+            this.mergeServerPeople(data.people);
+          } else if (this.players.length > 0 && this.isAdmin) {
             this.syncMutation('BULK_SAVE', { people: this.players });
           }
         }

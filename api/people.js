@@ -12,6 +12,38 @@ const DEFAULT_PEOPLE = [];
 const KV_KEY = 'arena_scoreboard_master';
 let memoryFallback = [];
 
+// Helper to sanitize and strictly deduplicate people by name (case-insensitive)
+function cleanPeople(list) {
+  if (!Array.isArray(list)) return [];
+  const map = new Map();
+  for (const p of list) {
+    if (!p || !p.name) continue;
+    const name = String(p.name).trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    const count = Math.max(0, Number(p.count) || 0);
+
+    if (map.has(key)) {
+      const existing = map.get(key);
+      // Retain the higher count and real ID
+      if (count > existing.count) {
+        existing.count = count;
+      }
+      if (p.id && (!existing.id || existing.id.startsWith('temp_'))) {
+        existing.id = p.id;
+      }
+    } else {
+      map.set(key, {
+        id: p.id || ('p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
+        name,
+        count,
+        createdAt: Number(p.createdAt) || Date.now()
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
 // Helper to interact with Vercel KV / Upstash REST API
 async function getStoredPeople() {
   const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
@@ -27,7 +59,7 @@ async function getStoredPeople() {
         const json = await res.json();
         if (json && json.result) {
           const parsed = typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
-          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed)) return cleanPeople(parsed);
         }
       }
     } catch (err) {
@@ -35,14 +67,15 @@ async function getStoredPeople() {
     }
   }
 
-  return memoryFallback;
+  return cleanPeople(memoryFallback);
 }
 
 async function saveStoredPeople(people) {
+  const cleaned = cleanPeople(people);
+  memoryFallback = cleaned;
+
   const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
   const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-
-  memoryFallback = people;
 
   if (kvUrl && kvToken) {
     try {
@@ -52,12 +85,13 @@ async function saveStoredPeople(people) {
           Authorization: `Bearer ${kvToken}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(people)
+        body: JSON.stringify(cleaned)
       });
     } catch (err) {
       console.warn('Failed writing to Vercel KV, saved to memory:', err.message);
     }
   }
+  return cleaned;
 }
 
 // Admin Password check
@@ -124,33 +158,57 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Admin verified successfully' });
     }
 
-    // Action: Add new person (starts with count: 0)
+    // Action: Add new person
     if (action === 'ADD_PERSON') {
       const trimmedName = (name || '').trim();
       if (!trimmedName || trimmedName.length < 2) {
         return res.status(400).json({ error: 'Name must be at least 2 characters long' });
       }
 
-      const duplicate = people.some(p => p.name.toLowerCase() === trimmedName.toLowerCase());
-      if (duplicate) {
-        return res.status(400).json({ error: `"${trimmedName}" is already registered` });
+      const startingCount = Math.max(0, Number(req.body.count ?? req.body.initialCount ?? 0) || 0);
+      const personId = req.body.id || ('p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4));
+
+      // Check if person already exists by normalized name OR id
+      const existing = people.find(
+        p => p.name.toLowerCase() === trimmedName.toLowerCase() || (req.body.id && p.id === req.body.id)
+      );
+
+      if (existing) {
+        existing.count = startingCount;
+        if (req.body.id) existing.id = req.body.id;
+        existing.name = trimmedName;
+        const saved = await saveStoredPeople(people);
+        return res.status(200).json({ success: true, person: existing, people: saved });
       }
 
       const newPerson = {
-        id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        id: personId,
         name: trimmedName,
-        count: 0,
-        createdAt: Date.now()
+        count: startingCount,
+        createdAt: req.body.createdAt || Date.now()
       };
 
       people.unshift(newPerson);
-      await saveStoredPeople(people);
-      return res.status(200).json({ success: true, person: newPerson, people });
+      const saved = await saveStoredPeople(people);
+      return res.status(200).json({ success: true, person: newPerson, people: saved });
     }
 
     // Action: Update count (+1, -1, or direct setCount)
     if (action === 'UPDATE_COUNT') {
-      const target = people.find(p => p.id === id);
+      let target = people.find(
+        p => p.id === id || (name && p.name.toLowerCase() === String(name).trim().toLowerCase())
+      );
+
+      if (!target && name) {
+        target = {
+          id: id || ('p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
+          name: String(name).trim(),
+          count: 0,
+          createdAt: Date.now()
+        };
+        people.unshift(target);
+      }
+
       if (!target) {
         return res.status(404).json({ error: 'Person not found' });
       }
@@ -162,29 +220,30 @@ export default async function handler(req, res) {
         target.count = Math.max(0, target.count + change);
       }
 
-      await saveStoredPeople(people);
-      return res.status(200).json({ success: true, person: target, people });
+      const saved = await saveStoredPeople(people);
+      return res.status(200).json({ success: true, person: target, people: saved });
     }
 
     // Action: Bulk Save / Server Initialization from Admin client
     if (action === 'BULK_SAVE' && Array.isArray(req.body.people)) {
-      people = req.body.people;
-      await saveStoredPeople(people);
-      return res.status(200).json({ success: true, people });
+      const saved = await saveStoredPeople(req.body.people);
+      return res.status(200).json({ success: true, people: saved });
     }
 
     // Action: Delete person
     if (action === 'DELETE_PERSON') {
-      people = people.filter(p => p.id !== id);
-      await saveStoredPeople(people);
-      return res.status(200).json({ success: true, people });
+      people = people.filter(
+        p => p.id !== id && (!name || p.name.toLowerCase() !== String(name).trim().toLowerCase())
+      );
+      const saved = await saveStoredPeople(people);
+      return res.status(200).json({ success: true, people: saved });
     }
 
     // Action: Reset all counts to 0
     if (action === 'RESET_COUNTS') {
       people = people.map(p => ({ ...p, count: 0 }));
-      await saveStoredPeople(people);
-      return res.status(200).json({ success: true, people });
+      const saved = await saveStoredPeople(people);
+      return res.status(200).json({ success: true, people: saved });
     }
 
     return res.status(400).json({ error: 'Unknown action' });
