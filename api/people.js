@@ -7,17 +7,10 @@
  * otherwise falls back to memory cache with default data.
  */
 
-const DEFAULT_PEOPLE = [
-  { id: '1', name: 'Sophia Martinez', count: 18, createdAt: 1700000000000 },
-  { id: '2', name: 'Liam Chen', count: 24, createdAt: 1700000010000 },
-  { id: '3', name: 'Emma Watson', count: 15, createdAt: 1700000020000 },
-  { id: '4', name: 'Marcus Johnson', count: 11, createdAt: 1700000030000 },
-  { id: '5', name: 'Aria Patel', count: 7, createdAt: 1700000040000 },
-  { id: '6', name: 'Noah Davis', count: 3, createdAt: 1700000050000 }
-];
+const DEFAULT_PEOPLE = [];
 
-const KV_KEY = 'scoreboard_people_v1';
-let memoryFallback = [...DEFAULT_PEOPLE];
+const KV_KEY = 'scoreboard_people_v2';
+let memoryFallback = [];
 
 // Helper to interact with Vercel KV / Upstash REST API
 async function getStoredPeople() {

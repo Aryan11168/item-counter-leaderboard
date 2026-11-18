@@ -4,16 +4,9 @@
  * Vercel Serverless API sync, and local storage fallback.
  */
 
-const DEFAULT_PEOPLE = [
-  { id: '1', name: 'Sophia Martinez', count: 18, createdAt: 1700000000000 },
-  { id: '2', name: 'Liam Chen', count: 24, createdAt: 1700000010000 },
-  { id: '3', name: 'Emma Watson', count: 15, createdAt: 1700000020000 },
-  { id: '4', name: 'Marcus Johnson', count: 11, createdAt: 1700000030000 },
-  { id: '5', name: 'Aria Patel', count: 7, createdAt: 1700000040000 },
-  { id: '6', name: 'Noah Davis', count: 3, createdAt: 1700000050000 }
-];
+const DEFAULT_PEOPLE = [];
 
-const LOCAL_STORAGE_KEY = 'item_tracker_people_v2';
+const LOCAL_STORAGE_KEY = 'item_tracker_people_v3';
 const ADMIN_TOKEN_KEY = 'scoreboard_admin_token';
 
 class ItemTrackerApp {
@@ -42,12 +35,19 @@ class ItemTrackerApp {
   // Load people from localStorage or fallback
   loadLocalPeople() {
     try {
+      // Clear legacy mock data caches
+      localStorage.removeItem('item_tracker_people_v1');
+      localStorage.removeItem('item_tracker_people_v2');
+
       const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (data) return JSON.parse(data);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) return parsed;
+      }
     } catch (e) {
       console.warn('Failed reading localStorage:', e);
     }
-    return DEFAULT_PEOPLE;
+    return [];
   }
 
   saveLocalPeople() {
